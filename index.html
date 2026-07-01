@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<!-- Tracker Heures SFP — Driks91 (cedurget @ 42) — 2026 — github.com/cedurget -->
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Tracker SFP" />
+  <meta name="author" content="Driks91 (cedurget — 42)" />
+  <title>Tracker Heures SFP</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@700;800&display=swap" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { background: #0f0f0f; height: 100%; }
+    .day-cell {
+      cursor: pointer; border: 1px solid #1e1e1e; border-radius: 6px;
+      padding: 8px 6px; transition: all 0.15s ease; position: relative;
+      overflow: hidden; background: #141414; -webkit-tap-highlight-color: transparent;
+    }
+    .day-cell.filled { border-color: #2a2a2a; background: #161616; }
+    .day-cell.today { border-color: #ff5c35 !important; }
+    .day-cell.selected-cell { border-color: #ff5c35; background: #1f1208; }
+    .bar {
+      position: absolute; bottom: 0; left: 0; width: 100%;
+      background: linear-gradient(to top, #ff5c3540, transparent);
+      transition: height 0.3s ease; pointer-events: none;
+    }
+    .s-row {
+      display: flex; align-items: stretch;
+      border: 1px solid #2a2a2a; border-radius: 10px; overflow: hidden; height: 44px;
+    }
+    .s-btn {
+      background: #1a1a1a; border: none; color: #555; font-size: 20px;
+      cursor: pointer; width: 48px; font-family: 'DM Mono', monospace;
+      transition: all 0.12s; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .s-btn:hover { background: #222; color: #ff5c35; }
+    .s-btn:active { background: #ff5c3520; color: #ff5c35; }
+    .s-lbl {
+      flex: 1; text-align: center; font-size: 13px; color: #e8e2d5;
+      background: #181818; display: flex; align-items: center; justify-content: center;
+      border-left: 1px solid #2a2a2a; border-right: 1px solid #2a2a2a;
+      font-weight: 500; letter-spacing: 0.04em; font-family: 'DM Mono', monospace;
+    }
+    .btn-save {
+      background: #ff5c35; border: none; color: #fff; padding: 14px 0;
+      border-radius: 6px; cursor: pointer; font-family: 'DM Mono', monospace;
+      font-size: 15px; font-weight: 500; flex: 1; min-height: 48px;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .btn-save:active { background: #ff7a55; }
+    .btn-clear {
+      background: transparent; border: 1px solid #2a2a2a; color: #666;
+      padding: 14px 18px; border-radius: 6px; cursor: pointer;
+      font-family: 'DM Mono', monospace; font-size: 14px; min-height: 48px;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .btn-clear:active { border-color: #ff5c35; color: #ff5c35; }
+    .stat-card {
+      background: #141414; border: 1px solid #1e1e1e;
+      border-radius: 8px; padding: 14px 16px; flex: 1;
+    }
+    .sync-bar {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 16px; background: #111; border-bottom: 1px solid #1a1a1a;
+      font-size: 11px; color: #555; font-family: 'DM Mono', monospace;
+    }
+    .sync-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+    .sync-btn {
+      margin-left: auto; background: transparent; border: 1px solid #2a2a2a;
+      color: #666; padding: 4px 10px; border-radius: 4px; cursor: pointer;
+      font-family: 'DM Mono', monospace; font-size: 11px;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .sync-btn:active { border-color: #ff5c35; color: #ff5c35; }
+    .fab {
+      position: fixed; bottom: 24px; right: 16px;
+      border-radius: 50px; border: none; cursor: pointer;
+      font-family: 'DM Mono', monospace; font-size: 12px; font-weight: 500;
+      padding: 12px 18px; z-index: 99;
+      display: flex; align-items: center; gap: 8px;
+      box-shadow: 0 4px 20px #00000080;
+      -webkit-tap-highlight-color: transparent;
+      transition: all 0.2s ease;
+    }
+    .fab.idle { background: #1e1e1e; border: 1px solid #2a2a2a; color: #888; }
+    .fab.active { background: #ff5c35; color: #fff; border: none; }
+    .fab-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+    .fab.active .fab-dot { animation: pulse 2s ease-in-out infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinning { animation: spin 1s linear infinite; display: inline-block; }
+
+    /* Easter egg animations */
+    @keyframes cry       { 0%,100%{transform:translateY(0) rotate(0deg)} 25%{transform:translateY(3px) rotate(-3deg)} 75%{transform:translateY(3px) rotate(3deg)} }
+    @keyframes floatz    { 0%{opacity:0;transform:translate(0,60px) rotate(-10deg)} 15%{opacity:.9} 80%{opacity:.6} 100%{opacity:0;transform:translate(16px,-10px) rotate(10deg)} }
+    @keyframes lone      { 0%,100%{transform:rotate(0deg) translateX(0)} 25%{transform:rotate(-8deg) translateX(-4px)} 75%{transform:rotate(8deg) translateX(4px)} }
+    @keyframes shake     { 0%,100%{transform:translate(0,0)} 20%{transform:translate(-3px,2px)} 40%{transform:translate(3px,-2px)} 60%{transform:translate(-2px,3px)} 80%{transform:translate(2px,-3px)} }
+    @keyframes spin-cw   { 0%{transform:rotate(0deg)} 100%{transform:rotate(360deg)} }
+    @keyframes spin-ccw  { 0%{transform:rotate(0deg)} 100%{transform:rotate(-360deg)} }
+    @keyframes tilt      { 0%,100%{transform:rotate(-18deg)} 50%{transform:rotate(18deg)} }
+    @keyframes bob-up    { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)} }
+    @keyframes bob-down  { 0%,100%{transform:translateY(0)} 50%{transform:translateY(10px)} }
+    @keyframes breathe-l { 0%,100%{transform:translateX(0)} 40%{transform:translateX(-18px)} 65%{transform:translateX(6px)} 80%{transform:translateX(4px)} }
+    @keyframes breathe-r { 0%,100%{transform:translateX(0)} 40%{transform:translateX(18px)} 65%{transform:translateX(-6px)} 80%{transform:translateX(-4px)} }
+    @keyframes wave-y    { 0%{transform:translateY(0)} 33%{transform:translateY(-10px)} 66%{transform:translateY(10px)} 100%{transform:translateY(0)} }
+    @keyframes stair-1   { 0%,60%,100%{transform:translateY(0)} 20%{transform:translateY(-14px)} }
+    @keyframes stair-2   { 0%,70%,100%{transform:translateY(0)} 30%{transform:translateY(-14px)} }
+    @keyframes stair-3   { 0%,80%,100%{transform:translateY(0)} 40%{transform:translateY(-14px)} }
+    @keyframes sweat     { 0%,100%{transform:scale(1)} 50%{transform:scale(1.04)} }
+    @keyframes explode   { 0%,100%{transform:scale(1) rotate(0deg)} 25%{transform:scale(1.2) rotate(-5deg)} 75%{transform:scale(1.2) rotate(5deg)} }
+    @keyframes pulse-big { 0%,100%{transform:scale(1)} 50%{transform:scale(1.15)} }
+    .ee-digit { display: inline-block; }
+    .zzz-container { position: absolute; top: -10px; left: calc(100% + 2px); width: 36px; height: 70px; pointer-events: none; }
+    .z { position: absolute; font-weight: 500; color: #4a9eff; opacity: 0; font-family: 'DM Mono', monospace; }
+    .z1 { font-size: 13px; animation: floatz 2.4s ease-in-out infinite 0s; }
+    .z2 { font-size: 18px; animation: floatz 2.4s ease-in-out infinite 0.8s; }
+    .z3 { font-size: 22px; animation: floatz 2.4s ease-in-out infinite 1.6s; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect, useCallback, useRef } = React;
+
+    const SCRIPT_URL = "REMPLACE_PAR_TON_SCRIPT_URL";
+    const OBJECTIF = 140;
+    const LS_HEURES = "tracker-heures";
+    const LS_SESSION = "tracker-session";
+    const LS_MONTH = "tracker-month";
+
+    const now = new Date();
+    const DAYS_IN_MONTH = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    const CURRENT_MONTH_KEY = `${now.getFullYear()}-${now.getMonth()}`;
+
+    const EMPTY_DATA = Array.from({ length: DAYS_IN_MONTH }, (_, i) => ({
+      jour: i + 1, date: null, heures: null, minutes: null
+    }));
+
+    const STEPS = [
+      { label: "5h",    min: 300 },
+      { label: "1h",    min: 60  },
+      { label: "30min", min: 30  },
+      { label: "10min", min: 10  },
+    ];
+
+    const C = { pur:'#a855f7', amb:'#f59e0b', red:'#f43f5e', org:'#f97316', blu:'#4a9eff', grn:'#22c55e', sfp:'#ff5c35', dim:'#555' };
+    const ee = (char, anim, color, extra='') =>
+      `<span class="ee-digit" style="animation:${anim};color:${color};${extra}">${char}</span>`;
+
+    const EASTER_EGGS = {
+      0: { html: `<div style="position:relative;display:inline-flex;align-items:baseline">
+              ${ee(0,'cry 1.2s ease-in-out infinite',C.blu)}
+              <span style="color:${C.dim}">h</span>
+              <div class="zzz-container">
+                <span class="z z1">z</span><span class="z z2">z</span><span class="z z3">Z</span>
+              </div>
+            </div>` },
+      1: { html: `${ee(1,'lone 1.4s ease-in-out infinite',C.dim)}<span style="color:${C.dim}">h</span>` },
+      13: { html: `${ee(1,'shake 0.4s ease-in-out infinite',C.red)}${ee(3,'shake 0.4s ease-in-out infinite 0.2s',C.red)}<span style="color:${C.dim}">h</span>` },
+      42: { html: `${ee(4,'spin-cw 0.9s linear infinite',C.pur)}${ee(2,'spin-ccw 0.9s linear infinite',C.amb)}<span style="color:${C.dim}">h</span>` },
+      50: { html: `${ee(5,'tilt 1s ease-in-out infinite',C.org)}${ee(0,'tilt 1s ease-in-out infinite 0.5s',C.dim)}<span style="color:${C.dim}">h</span>` },
+      67: { html: `${ee(6,'bob-up 0.7s ease-in-out infinite',C.pur)}${ee(7,'bob-down 0.7s ease-in-out infinite',C.amb)}<span style="color:${C.dim}">h</span>` },
+      69: { html: `<div style="display:inline-flex;align-items:baseline">${ee(6,'breathe-l 1.6s cubic-bezier(0.4,0,0.2,1) infinite',C.red,'position:relative;z-index:2')}${ee(9,'breathe-r 1.6s cubic-bezier(0.4,0,0.2,1) infinite',C.org,'position:relative;z-index:1')}<span style="color:${C.dim}">h</span></div>` },
+      100: { html: `${ee(1,'wave-y 1s ease-in-out infinite',C.grn)}${ee(0,'wave-y 1s ease-in-out infinite 0.33s',C.grn)}${ee(0,'wave-y 1s ease-in-out infinite 0.66s',C.grn)}<span style="color:${C.dim}">h</span>` },
+      123: { html: `${ee(1,'stair-1 1.2s ease-in-out infinite',C.blu)}${ee(2,'stair-2 1.2s ease-in-out infinite',C.pur)}${ee(3,'stair-3 1.2s ease-in-out infinite',C.org)}<span style="color:${C.dim}">h</span>` },
+      139: { html: `${ee(1,'sweat 0.5s ease-in-out infinite',C.red)}${ee(3,'sweat 0.5s ease-in-out infinite 0.17s',C.red)}${ee(9,'sweat 0.5s ease-in-out infinite 0.34s',C.red)}<span style="color:${C.red}">h</span>` },
+      140: { html: `${ee(1,'explode 0.5s ease-in-out infinite',C.sfp)}${ee(4,'pulse-big 0.6s ease-in-out infinite',C.sfp)}${ee(0,'explode 0.5s ease-in-out infinite 0.15s',C.sfp)}<span style="color:${C.sfp}">h</span>` },
+    };
+
+    function toDecimal(h, m) {
+      if (h === null && m === null) return null;
+      return (h || 0) + (m || 0) / 60;
+    }
+
+    function toTotalMin(h, m) { return (h || 0) * 60 + (m || 0); }
+
+    function formatDuration(totalMin) {
+      if (!totalMin || totalMin === 0) return "—";
+      const h = Math.floor(totalMin / 60);
+      const m = totalMin % 60;
+      if (h === 0) return `${m}min`;
+      if (m === 0) return `${h}h`;
+      return `${h}h${String(m).padStart(2, "0")}`;
+    }
+
+    function formatDurationDecimal(decimal) {
+      if (decimal === null || decimal === 0) return "—";
+      const h = Math.floor(decimal);
+      const m = Math.round((decimal - h) * 60);
+      if (h === 0) return `${m}min`;
+      if (m === 0) return `${h}h`;
+      return `${h}h${String(m).padStart(2, "0")}`;
+    }
+
+    function formatTime(ts) {
+      const d = new Date(parseInt(ts));
+      return `${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;
+    }
+
+    function parseHeures(val) {
+      if (val === null || val === "" || val === undefined) return { h: null, m: null };
+      if (typeof val === "number") {
+        const h = Math.floor(val); const m = Math.round((val - h) * 60); return { h, m };
+      }
+      if (typeof val === "string") {
+        const match = val.match(/^(\d+):(\d+)/);
+        if (match) return { h: parseInt(match[1]), m: parseInt(match[2]) };
+        const n = parseFloat(val);
+        if (!isNaN(n)) { const h = Math.floor(n); return { h, m: Math.round((n - h) * 60) }; }
+      }
+      return { h: null, m: null };
+    }
+
+    function jsonpFetch(url) {
+      return new Promise((resolve, reject) => {
+        const cbName = "cb_" + Date.now();
+        const script = document.createElement("script");
+        const timeout = setTimeout(() => {
+          delete window[cbName];
+          if (document.body.contains(script)) document.body.removeChild(script);
+          reject(new Error("timeout"));
+        }, 10000);
+        window[cbName] = (data) => {
+          clearTimeout(timeout);
+          delete window[cbName];
+          if (document.body.contains(script)) document.body.removeChild(script);
+          resolve(data);
+        };
+        script.src = `${url}?callback=${cbName}`;
+        script.onerror = () => { clearTimeout(timeout); reject(new Error("script error")); };
+        document.body.appendChild(script);
+      });
+    }
+
+    async function postToSheets(body) {
+      try {
+        await fetch(SCRIPT_URL, {
+          method: "POST", mode: "no-cors",
+          body: JSON.stringify(body),
+          headers: { "Content-Type": "text/plain" }
+        });
+      } catch {}
+    }
+
+    function TotalDisplay({ decimal }) {
+      const rounded = Math.round(decimal);
+      const egg = EASTER_EGGS[rounded];
+      if (egg) {
+        return <div
+          style={{ fontSize: "20px", fontWeight: 500, color: "#ff5c35", minHeight: "28px", position: "relative" }}
+          dangerouslySetInnerHTML={{ __html: egg.html }}
+        />;
+      }
+      return <div style={{ fontSize: "20px", fontWeight: 500, color: "#ff5c35" }}>
+        {formatDurationDecimal(decimal)}
+      </div>;
+    }
+
+    function App() {
+      const [days, setDays] = useState(() => {
+        try {
+          const savedMonth = localStorage.getItem(LS_MONTH);
+          const saved = localStorage.getItem(LS_HEURES);
+          if (savedMonth !== CURRENT_MONTH_KEY) {
+            localStorage.removeItem(LS_HEURES);
+            localStorage.removeItem(LS_MONTH);
+            return EMPTY_DATA;
+          }
+          if (saved) {
+            const parsed = JSON.parse(saved);
+            if (parsed.length === DAYS_IN_MONTH) return parsed;
+          }
+        } catch {}
+        return EMPTY_DATA;
+      });
+
+      const [selected, setSelected] = useState(null);
+      const [counterMin, setCounterMin] = useState(0);
+      const [today] = useState(new Date().getDate());
+      const [syncStatus, setSyncStatus] = useState("idle");
+      const [syncMsg, setSyncMsg] = useState("Chargement…");
+      const [sessionTs, setSessionTs] = useState(null);
+      const [chronoDisplay, setChronoDisplay] = useState("");
+      const chronoRef = useRef(null);
+
+      useEffect(() => {
+        if (!sessionTs) { setChronoDisplay(""); clearInterval(chronoRef.current); return; }
+        const update = () => {
+          const diff = Date.now() - parseInt(sessionTs);
+          const h = Math.floor(diff / 3600000);
+          const m = Math.floor((diff % 3600000) / 60000);
+          setChronoDisplay(`${formatTime(sessionTs)} · ${h > 0 ? h+"h" : ""}${String(m).padStart(2,"0")}min`);
+        };
+        update();
+        chronoRef.current = setInterval(update, 30000);
+        return () => clearInterval(chronoRef.current);
+      }, [sessionTs]);
+
+      useEffect(() => {
+        const interval = setInterval(() => {
+          const n = new Date();
+          if (n.getHours() === 0 && n.getMinutes() === 0 && sessionTs) {
+            alert("Session de pointage resetée — pense à pointer demain !");
+            localStorage.removeItem(LS_SESSION);
+            setSessionTs(null);
+            postToSheets({ type: "session_end_midnight" });
+          }
+        }, 60000);
+        return () => clearInterval(interval);
+      }, [sessionTs]);
+
+      const loadFromSheets = useCallback(async () => {
+        setSyncStatus("loading");
+        setSyncMsg("Chargement…");
+        try {
+          const json = await jsonpFetch(SCRIPT_URL);
+          if (!json.ok) throw new Error(json.error || "Erreur serveur");
+          const newDays = json.data.slice(0, DAYS_IN_MONTH).map((row, i) => {
+            const { h, m } = parseHeures(row.heures);
+            return { jour: i + 1, date: row.date || null, heures: h, minutes: m };
+          });
+          setDays(newDays);
+          localStorage.setItem(LS_HEURES, JSON.stringify(newDays));
+          localStorage.setItem(LS_MONTH, CURRENT_MONTH_KEY);
+          const sheetSession = json.session;
+          const localSession = localStorage.getItem(LS_SESSION);
+          if (sheetSession) {
+            localStorage.setItem(LS_SESSION, sheetSession);
+            setSessionTs(sheetSession);
+          } else {
+            if (localSession) localStorage.removeItem(LS_SESSION);
+            setSessionTs(null);
+          }
+          setSyncStatus("ok");
+          setSyncMsg("Synced ✓");
+        } catch {
+          const localSession = localStorage.getItem(LS_SESSION);
+          if (localSession) setSessionTs(localSession);
+          setSyncStatus("error");
+          setSyncMsg("Hors ligne — données locales");
+        }
+      }, []);
+
+      useEffect(() => { loadFromSheets(); }, []);
+
+      const saveToSheets = useCallback(async (newDays) => {
+        localStorage.setItem(LS_HEURES, JSON.stringify(newDays));
+        localStorage.setItem(LS_MONTH, CURRENT_MONTH_KEY);
+        setSyncStatus("saving");
+        setSyncMsg("Sauvegarde…");
+        try {
+          await postToSheets({
+            type: "heures",
+            data: newDays.map(d => ({ jour: d.jour, heures: toDecimal(d.heures, d.minutes) }))
+          });
+          setSyncStatus("ok");
+          setSyncMsg("Sauvegardé ✓");
+        } catch {
+          setSyncStatus("error");
+          setSyncMsg("Erreur sync — sauvegardé en local");
+        }
+      }, []);
+
+      const handlePointer = async () => {
+        if (!sessionTs) {
+          const ts = Date.now().toString();
+          localStorage.setItem(LS_SESSION, ts);
+          setSessionTs(ts);
+          await postToSheets({ type: "session_start", timestamp: ts });
+        } else {
+          const entreeTs = parseInt(sessionTs);
+          const sortieTs = Date.now();
+          const diffMin = Math.round((sortieTs - entreeTs) / 60000);
+          const todayDay = new Date().getDate();
+          const todayDate = new Date().toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
+          const newDays = days.map(d => {
+            if (d.jour !== todayDay) return d;
+            const existingMin = toTotalMin(d.heures, d.minutes);
+            const totalMin = existingMin + diffMin;
+            return { ...d, heures: Math.floor(totalMin / 60), minutes: totalMin % 60 };
+          });
+          setDays(newDays);
+          localStorage.removeItem(LS_SESSION);
+          setSessionTs(null);
+          await postToSheets({
+            type: "session_end",
+            date: todayDate,
+            entree: formatTime(entreeTs),
+            sortie: formatTime(sortieTs),
+            dureeDecimal: Math.round((diffMin / 60) * 100) / 100,
+            dureeFormatee: formatDuration(diffMin)
+          });
+          saveToSheets(newDays);
+        }
+      };
+
+      const openDay = (jour) => {
+        const d = days.find(d => d.jour === jour);
+        setSelected(jour);
+        setCounterMin(toTotalMin(d.heures, d.minutes));
+      };
+
+      const adjust = (delta) => setCounterMin(prev => Math.max(0, prev + delta));
+
+      const save = () => {
+        const h = Math.floor(counterMin / 60);
+        const m = counterMin % 60;
+        const isEmpty = counterMin === 0;
+        const newDays = days.map(d =>
+          d.jour === selected
+            ? { ...d, heures: isEmpty ? null : h, minutes: isEmpty ? null : m }
+            : d
+        );
+        setDays(newDays);
+        setSelected(null);
+        saveToSheets(newDays);
+      };
+
+      const clearDay = () => {
+        const newDays = days.map(d =>
+          d.jour === selected ? { ...d, heures: null, minutes: null } : d
+        );
+        setDays(newDays);
+        setSelected(null);
+        saveToSheets(newDays);
+      };
+
+      const totalDecimal = days.reduce((acc, d) => {
+        const val = toDecimal(d.heures, d.minutes);
+        return val !== null ? acc + val : acc;
+      }, 0);
+
+      const maxVal = Math.max(...days.map(d => toDecimal(d.heures, d.minutes) ?? 0), 1);
+      const reste = Math.max(0, OBJECTIF - totalDecimal);
+      const pct = Math.min(100, Math.round((totalDecimal / OBJECTIF) * 100));
+      const dotColor = { idle: "#444", loading: "#f39c12", saving: "#f39c12", ok: "#27ae60", error: "#e74c3c" }[syncStatus];
+      const selectedDay = selected ? days.find(d => d.jour === selected) : null;
+
+      return (
+        <div style={{ fontFamily: "'DM Mono', monospace", minHeight: "100vh", background: "#0f0f0f", color: "#e8e2d5", paddingBottom: "80px" }}>
+
+          <div className="sync-bar">
+            <div className="sync-dot" style={{ background: dotColor }} />
+            <span>{syncMsg}</span>
+            <button className="sync-btn" onClick={loadFromSheets}>
+              {syncStatus === "loading" ? <span className="spinning">↻</span> : "↻ Sync"}
+            </button>
+          </div>
+
+          <div style={{ padding: "20px 16px 16px", borderBottom: "1px solid #1e1e1e" }}>
+            <div style={{ fontFamily: "'Syne', sans-serif", fontSize: "22px", fontWeight: 800, letterSpacing: "-0.02em", color: "#fff" }}>
+              TRACKER HEURES SFP
+            </div>
+            <div style={{ fontSize: "11px", color: "#555", marginTop: "3px", letterSpacing: "0.08em" }}>
+              {new Date().toLocaleDateString("fr-FR", { month: "long", year: "numeric" }).toUpperCase()} · OBJECTIF {OBJECTIF}H
+            </div>
+            <div style={{ display: "flex", gap: "8px", marginTop: "14px" }}>
+              <div className="stat-card">
+                <div style={{ fontSize: "10px", color: "#555", letterSpacing: "0.1em", marginBottom: "3px" }}>TOTAL</div>
+                <TotalDisplay decimal={totalDecimal} />
+              </div>
+              <div className="stat-card">
+                <div style={{ fontSize: "10px", color: "#555", letterSpacing: "0.1em", marginBottom: "3px" }}>RESTE</div>
+                <div style={{ fontSize: "20px", fontWeight: 500, color: reste === 0 ? "#27ae60" : "#e8e2d5" }}>
+                  {reste === 0 ? "🎯" : formatDurationDecimal(reste)}
+                </div>
+              </div>
+              <div className="stat-card">
+                <div style={{ fontSize: "10px", color: "#555", letterSpacing: "0.1em", marginBottom: "3px" }}>AVANCEMENT</div>
+                <div style={{ fontSize: "20px", fontWeight: 500 }}>{pct}%</div>
+              </div>
+            </div>
+            <div style={{ marginTop: "12px", height: "4px", background: "#1e1e1e", borderRadius: "2px", overflow: "hidden" }}>
+              <div style={{ height: "100%", width: `${pct}%`, background: pct >= 100 ? "#27ae60" : "#ff5c35", borderRadius: "2px", transition: "width 0.4s ease" }} />
+            </div>
+          </div>
+
+          <div style={{ padding: "16px" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: "5px" }}>
+              {days.map(d => {
+                const decimal = toDecimal(d.heures, d.minutes);
+                const barHeight = decimal !== null ? Math.round((decimal / maxVal) * 100) : 0;
+                const isFilled = decimal !== null;
+                const isToday = d.jour === today;
+                const isSelected = d.jour === selected;
+                const shortDate = d.date ? d.date.split(" ").slice(0, 2).join(" ") : `J${d.jour}`;
+                return (
+                  <div key={d.jour}
+                    className={`day-cell${isFilled ? " filled" : ""}${isToday ? " today" : ""}${isSelected ? " selected-cell" : ""}`}
+                    onClick={() => openDay(d.jour)}
+                  >
+                    <div className="bar" style={{ height: `${barHeight}%` }} />
+                    <div style={{ position: "relative", zIndex: 1 }}>
+                      <div style={{ fontSize: "9px", color: isToday ? "#ff5c35" : "#444", marginBottom: "3px" }}>
+                        {shortDate}{isToday ? "●" : ""}
+                      </div>
+                      <div style={{ fontSize: isFilled ? "12px" : "10px", fontWeight: isFilled ? 500 : 400, color: isFilled ? "#e8e2d5" : "#2a2a2a" }}>
+                        {formatDurationDecimal(decimal)}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {!selected && (
+            <button className={`fab ${sessionTs ? "active" : "idle"}`} onClick={handlePointer}>
+              <span className="fab-dot" />
+              {sessionTs ? chronoDisplay || "En cours…" : "POINTER L'ENTRÉE"}
+            </button>
+          )}
+
+          {selected && (
+            <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "#141414", borderTop: "1px solid #2a2a2a", padding: "20px 16px 32px", zIndex: 100 }}>
+              <div style={{ fontSize: "11px", color: "#555", letterSpacing: "0.1em", marginBottom: "2px" }}>
+                JOUR {selected} — SAISIR LES HEURES
+              </div>
+              {selectedDay?.date && (
+                <div style={{ fontSize: "13px", color: "#555", marginBottom: "20px" }}>
+                  {selectedDay.date}
+                </div>
+              )}
+              <div style={{ fontSize: "64px", fontWeight: 500, textAlign: "center", color: counterMin > 0 ? "#ff5c35" : "#2a2a2a", letterSpacing: "-0.03em", lineHeight: 1, marginBottom: "24px" }}>
+                {formatDuration(counterMin)}
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", maxWidth: "320px", margin: "0 auto 24px" }}>
+                {STEPS.map(s => (
+                  <div key={s.label} className="s-row">
+                    <button className="s-btn" onClick={() => adjust(-s.min)}>−</button>
+                    <span className="s-lbl">{s.label}</span>
+                    <button className="s-btn" onClick={() => adjust(s.min)}>+</button>
+                  </div>
+                ))}
+              </div>
+              <div style={{ display: "flex", gap: "8px", maxWidth: "320px", margin: "0 auto" }}>
+                <button className="btn-save" onClick={save}>ENREGISTRER</button>
+                <button className="btn-clear" onClick={clearDay}>Effacer</button>
+                <button className="btn-clear" onClick={() => setSelected(null)} style={{ marginLeft: "auto" }}>✕</button>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+</body>
+</html>
